@@ -1,6 +1,6 @@
 #!/usr/bin/ruby
 
-# createtables.rb -- Version 0.0.5
+# createtables.rb -- Version 0.0.6
 #
 # This code generates tables for IDNA2008.
 #
@@ -42,7 +42,7 @@
 
 
 require 'rubygems'
-#require 'idn'
+require 'idn'
 
 def stringToArray(s)
   if(s.class == Array)
@@ -747,7 +747,7 @@ class Unicodedata
       print("Creating cache file\n")
       parse
       dumpToCache
-      print("Cache filel created")
+      print("Cache filel created\n")
     end
 
   end
@@ -1390,7 +1390,9 @@ class Document
           cp = @myUnicode.codepoint(c)
           ss = cp.to_s.sub("U+","")
           ss += ";" + cp.uLabel_to_s(@myUnicode)
-          ss += ";" + cp.inOldIDNA(@myUnicode)
+	  if($oldidna)
+	    ss += ";" + cp.inOldIDNA(@myUnicode)
+	  end
           ss += ";" + cp.rules_to_s(@myUnicode)
           ss += ";" + cp.name
           f.print ss
@@ -1816,6 +1818,7 @@ ianacsv = false
 html = false
 txt = false
 fetch = false
+$oldidna = false
 
 ARGV.each do |whatever|
   a = whatever
@@ -1838,7 +1841,7 @@ ARGV.each do |whatever|
     print("You can find the files at for example http://www.unicode.org/Public/6.1.0/ucd/\n")
     print("...or subdirectory to a path similar to that.\n")
     print("It is ok to give files like named above but in beta version like UnicodeData-6.1.0d8.txt.\n")
-    print("Usage: createtables.rb [-h] [-e] [-i] [directory] [-rfcxml] [-idnabisxml] [-html] [-txt] [-ianacsv] [-fetch]\n")
+    print("Usage: createtables.rb [-h] [-e] [-i] [directory] [-rfcxml] [-idnabisxml] [-html] [-txt] [-ianacsv] [-fetch] [-idna2003]\n")
     exit(1)
   #Select a file type by command line option
   elsif(a == "-rfcxml") 
@@ -1853,6 +1856,8 @@ ARGV.each do |whatever|
     ianacsv = true   
   elsif(a == "-fetch")
     fetch = true
+  elsif(a == "-idna2003")
+    $oldidna = true
   else
     subdirectory = a
   end
