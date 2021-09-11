@@ -1,6 +1,6 @@
 #!/usr/bin/ruby
 
-# createtables.rb -- Version 0.0.3
+# createtables.rb -- Version 0.0.5
 #
 # This code generates tables for IDNA2008.
 #
@@ -678,6 +678,7 @@ end
 
 def findFile(dir, filename)
   # Finds latest file that have a filename matching filename*.txt in current directory
+  # Take into account that filename-9.txt is older than filename-21.txt
   files = Dir[dir + filename + ".txt"]
   if(files.length == 0)
     files = Dir[dir + filename + "*.txt"]
@@ -686,7 +687,32 @@ def findFile(dir, filename)
     print("Did not find any " + filename + " in directory " + dir + "\n")
     exit(1)
   end
-  return(files.sort[files.length - 1])
+
+  string_re = /^(.*?)([0-9]*)(\.txt)$/
+  filename = Array.new
+  mapping = Hash.new
+  if(files.length == 1)
+    filename[0] = files[0]
+    mapping[files[0]] = files[0]
+  else
+    start = 0
+    while(start < files.length)
+      printf("Looking at file %s\n",files[0])
+      m = string_re.match(files[start])
+      if(m)
+        printf("1: %s 2: %s 3: %s\n", m[1], m[2], m[3])
+        filename[start] = m[1] + ("%03d" % m[2]) + m[3]
+        mapping[filename[start]] = files[start]
+      else
+        filename[start] = files[start]
+        mapping[filename[start]] = files[start]
+      end
+      start += 1
+    end
+  end
+
+  a = filename.sort
+  return(mapping[a[-1]])
 end
 
 class Unicodedata
@@ -766,11 +792,11 @@ class Unicodedata
   end
 
   def findScript(theScript)
-    theScript.strip!
-    unless(@scripts.has_key?(theScript))
-      @scripts[theScript] = UnicodeScript.new(theScript)
+    tmp = theScript.strip
+    unless(@scripts.has_key?(tmp))
+      @scripts[tmp] = UnicodeScript.new(tmp)
     end
-    return @scripts[theScript]
+    return @scripts[tmp]
   end
 
   def findProperty(theProperty)
@@ -1377,19 +1403,16 @@ class Document
     end
   end
   def q(s)
-    t = s
-    t.gsub!("<","&lt;")
+    t = s.gsub("<","&lt;")
     t.gsub!(">","&gt;")
     return(t)
   end
   def qBis(s)
-    t = s
-    t.gsub!("&lt;control&gt;","NULL") #Change "<control>" to "NULL" for idnabis-table.xml
+    t = s.gsub("&lt;control&gt;","NULL") #Change "<control>" to "NULL" for idnabis-table.xml
     return(t)
   end
   def qTris(s)
-    t = s
-    t.upcase!
+    t = s.upcase
     t.gsub!("<CONTROL>","NULL") #Change "<control>" to "NULL" for IANA csv file
     t.gsub!(/EXTENSION ([A-Z])>../,'EXTENSION \1, FIRST>..')
     t.gsub!(/EXTENSION ([A-Z])>$/,'EXTENSION \1, LAST>')
@@ -1784,6 +1807,7 @@ class TextDocument < Document
 end
 
 directory = Dir.pwd
+subdirectory = ""
 examples = false
 initialize = false
 rfcxml = false
@@ -1830,7 +1854,7 @@ ARGV.each do |whatever|
   elsif(a == "-fetch")
     fetch = true
   else
-    directory = a
+    subdirectory = a
   end
 end
 
@@ -1843,24 +1867,26 @@ if(rfcxml == false && idnabisxml == false && html == false && txt == false && ia
   ianacsv = true
 end
 
-if(directory[-1,1] != "/")
-  directory = directory + "/"
-end
-
 if(fetch)
   print "Checking Unicode versions\n"
-  if directory =~ /^(.*\/)([0-9]\.[0-9]\.[0-9])\/$/
-    d = $1
+  if(subdirectory[0] == "/")
+    d = subdirectory
   else
-    d = directory
+    d = directory + "/" + subdirectory
+  end
+  unless(subdirectory[-1] == "/")
+    d = d + "/"
   end
   print "Looking in directory " + d + "\n"
   require 'net/http'
   print "Checking what versions of Unicode exists now\n"
   a = Net::HTTP.get('www.unicode.org', '/Public/')
   a.each_line do |line|
-    if line =~ /a href="([0-9]*[5-9]\.[0-9]\.[0-9])\/\"/
-      version = $1
+    if line =~ /a href="([0-9]*[0-9])\.([0-9]\.[0-9])\/\"/
+      if $1.to_i < 5
+        next
+      end
+      version = $1 + "." + $2
       print "Checking version " + version + "\n"
       unless(File.directory?(d + version))
         print "Creating directory " + d + version + "\n"
@@ -1910,6 +1936,12 @@ if(fetch)
       }
     end
   end
+  exit 0
+end
+
+directory = directory + "/" + subdirectory
+unless(directory[-1,1] == "/")
+  directory = directory + "/"
 end
 
 if(initialize)
