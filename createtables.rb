@@ -1,6 +1,6 @@
 #!/usr/bin/ruby
 
-# createtables.rb -- Version 0.0.1
+# createtables.rb -- Version 0.0.2
 #
 # This code generates tables for IDNA2008.
 #
@@ -10,6 +10,11 @@
 # Written by Patrik Faltstrom <paf@cisco.com>
 #
 # Copyright (c) 2010, Cisco Systems, Inc
+# All rights reserved.
+#
+# Modified by Takahiro Nemoto<t.nemo10@kmd.keio.ac.jp>
+#
+# Copyright (c) 2012, Japan Registry Services Co., Ltd.
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification, are permitted
@@ -514,6 +519,19 @@ class UnicodeCharacter
     else
       return @myName
     end
+  end
+
+  def nameBis
+  #Name for idnabis-tables.xml
+      if(@myName.length == 0)
+        if(hasProperty?("Noncharacter_Code_Point"))
+          return "<NOT A CHARACTER>"
+        else
+          return "<RESERVED>"
+        end
+      else
+        return @myName
+      end
   end
 
   def setGeneralCategory(newGeneralCategory)
@@ -1230,6 +1248,9 @@ class Document
               ss = intervalStart.to_s.sub("U+","")
               tt = intervalStart.name
             else
+              if(c == @myEnd) #For output last codepoint
+                  intervalEnd = cp
+              end
               ss = intervalStart.to_s.sub("U+","") + ".." + intervalEnd.to_s.sub("U+","")
               tt = intervalStart.name + ".." + intervalEnd.name
             end
@@ -1250,6 +1271,50 @@ class Document
         f.print endSection
         f.print endDocument
       end
+      if(kind == "BIS")
+      #For make an idnabis-tables.xml
+        f.print idnaHeader
+        intervalStart = nil
+        intervalEnd = nil
+        prevValue = ""
+        (@myStart..@myEnd).each do |c|
+          cp = @myUnicode.codepoint(c)
+          if(intervalStart == nil)
+            intervalStart = cp
+            intervalEnd = cp
+            prevValue = cp.uLabel_to_s(@myUnicode)
+          end
+          if(cp.uLabel_to_s(@myUnicode) != prevValue || c == @myEnd)
+            if(intervalStart == intervalEnd)
+              ss = intervalStart.to_s.sub("U+","")
+              tt = intervalStart.nameBis
+            else
+              if(c == @myEnd)  #For output last codepoint
+                  intervalEnd = cp
+              end
+              ss = intervalStart.to_s.sub("U+","") + "-" + intervalEnd.to_s.sub("U+","")
+              tt = intervalStart.nameBis + ".." + intervalEnd.nameBis
+            end
+            f.print startRecord
+            f.print startCodepoint
+            f.print qBis(q(ss))
+            f.print endCodepoint
+            f.print startProperty
+            f.print prevValue
+            f.print endProperty
+            f.print startDescription
+            f.print qBis(q(tt))
+            f.print endDescription
+            f.print endRecord
+            intervalStart = cp
+            intervalEnd = cp
+            prevValue = cp.uLabel_to_s(@myUnicode)
+          else
+            intervalEnd = cp
+          end
+        end
+        f.print idnaFooter
+      end                 
       if(kind == "ALL")
         f.print startSection
         f.print startHeader + "Codepoints in Unicode Character Database" + endHeader
@@ -1270,11 +1335,15 @@ class Document
       end
     end
   end
-
   def q(s)
     t = s
     t.gsub!("<","&lt;")
     t.gsub!(">","&gt;")
+    return(t)
+  end
+  def qBis(s)
+    t = s
+    t.gsub!("&lt;control&gt;","NULL") #Change "<control>" to "NULL" for idnabis-table.xml
     return(t)
   end
   def startSection
@@ -1445,6 +1514,150 @@ class XMLRFCDocument < Document
   def endHColumn
     return "</ttcol>"
   end
+  #following methods for idnabis-tables.xml
+  def startRecord
+    return "    <record>\n"
+  end
+  def endRecord
+    return "    </record>\n"
+  end
+  def startCodepoint
+    return "      <codepoint>"
+  end
+  def endCodepoint
+    return "</codepoint>\n"
+  end
+  def startProperty
+    return "      <property>"
+  end
+  def endProperty
+    return "</property>\n"
+  end
+  def startDescription
+    return "      <description>"
+  end
+  def endDescription
+    return "</description>\n"
+  end
+  def idnaHeader
+  #You should modify following information to as necessary
+    return '<?xml version='"'"'1.0'"'"' encoding='"'"'UTF-8'"'"'?>
+<?xml-stylesheet type="text/xsl" href="idnabis-tables.xsl"?>
+<?oxygen RNGSchema="idnabis-tables.rng" type="xml"?>
+<registry xmlns="http://www.iana.org/assignments" id="idnabis-tables">
+  <title>IDNA Parameters</title>
+  <created>2010-03-31</created>
+  <updated>2010-08-04</updated>
+  <xref type="rfc" data="rfc5892"/>
+  <registry id="idnabis-tables-context">
+    <title>IDNA Contextual Rules</title>
+    <created>2010-03-31</created>
+    <updated>2010-03-31</updated>
+    <registration_rule>IETF Review</registration_rule>
+    <xref type="rfc" data="rfc5892"/>
+    <record date="2010-03-31">
+      <description>ZERO WIDTH NON-JOINER</description>
+      <codepoint>200C</codepoint>
+      <overview>This may occur in a formally cursive script (such as Arabic) in a
+context where it breaks a cursive connection as required for
+orthographic rules, as in the Persian language, for example.  It
+also may occur in Indic scripts in a consonant conjunct context
+(immediately following a virama), to control required display of
+such conjuncts.</overview>
+      <lookup>True</lookup>
+      <ruleset>False;
+If Canonical_Combining_Class(Before(cp)) .eq.  Virama Then True;
+If RegExpMatch((Joining_Type:{L,D})(Joining_Type:T)*\u200C
+(Joining_Type:T)*(Joining_Type:{R,D})) Then True;</ruleset>
+    </record>
+    <record date="2010-03-31">
+      <description>ZERO WIDTH JOINER</description>
+      <codepoint>200D</codepoint>
+      <overview>This may occur in Indic scripts in a consonant conjunct context
+(immediately following a virama), to control required display of
+such conjuncts.</overview>
+      <lookup>True</lookup>
+      <ruleset>False;
+If Canonical_Combining_Class(Before(cp)) .eq.  Virama Then True;</ruleset>
+    </record>
+    <record date="2010-03-31">
+      <description>MIDDLE DOT</description>
+      <codepoint>00B7</codepoint>
+      <overview>Between '"'"'l'"'"' (U+006C) characters only, used to permit the Catalan
+character ela geminada to be expressed</overview>
+      <lookup>False</lookup>
+      <ruleset>False;
+If Before(cp) .eq.  U+006C And
+   After(cp) .eq.  U+006C Then True;</ruleset>
+    </record>
+    <record date="2010-03-31">
+      <description>GREEK LOWER NUMERAL SIGN (KERAIA)</description>
+      <codepoint>0375</codepoint>
+      <overview>The script of the following character MUST be Greek.</overview>
+      <lookup>False</lookup>
+      <ruleset>False;
+ If Script(After(cp)) .eq.  Greek Then True;</ruleset>
+    </record>
+    <record date="2010-03-31">
+      <description>HEBREW PUNCTUATION GERESH</description>
+      <codepoint>05F3</codepoint>
+      <overview>The script of the preceding character MUST be Hebrew.</overview>
+      <lookup>False</lookup>
+      <ruleset>False;
+If Script(Before(cp)) .eq.  Hebrew Then True;</ruleset>
+    </record>
+    <record date="2010-03-31">
+      <description>HEBREW PUNCTUATION GERSHAYIM</description>
+      <codepoint>05F4</codepoint>
+      <overview>The script of the preceding character MUST be Hebrew.</overview>
+      <lookup>False</lookup>
+      <ruleset>False;
+If Script(Before(cp)) .eq.  Hebrew Then True;</ruleset>
+    </record>
+    <record date="2010-03-31">
+      <description>KATAKANA MIDDLE DOT</description>
+      <codepoint>30FB</codepoint>
+      <overview>Note that the Script of Katakana Middle Dot is not any of
+"Hiragana", "Katakana" or "Han".  The effect of this rule is to
+require at least one character in the label to be in one of those
+scripts.</overview>
+      <lookup>False</lookup>
+      <ruleset>False;
+For All Characters:
+   If Script(cp) .in. {Hiragana, Katakana, Han} Then True;
+End For;</ruleset>
+    </record>
+    <record date="2010-03-31">
+      <description>ARABIC-INDIC DIGITS</description>
+      <codepoint>0660-0669</codepoint>
+      <overview>Can not be mixed with Extended Arabic-Indic Digits.</overview>
+      <lookup>False</lookup>
+      <ruleset>True;
+For All Characters:
+   If cp .in. 06F0..06F9 Then False;
+End For;</ruleset>
+    </record>
+    <record date="2010-03-31">
+      <description>EXTENDED ARABIC-INDIC DIGITS</description>
+      <codepoint>06F0-06F9</codepoint>
+      <overview>Can not be mixed with Arabic-Indic Digits.</overview>
+      <lookup>False</lookup>
+      <ruleset>True;
+For All Characters:
+   If cp .in. 0660..0669 Then False;
+End For;</ruleset>
+    </record>
+  </registry>
+  <registry id="idnabis-tables-properties">
+    <title>IDNA Derived Properties</title>
+    <registration_rule>Expert Review</registration_rule>
+    <xref type="rfc" data="rfc5892"/>'"\n"
+  end
+  def idnaFooter
+    return "  </registry>
+  <people/>
+</registry>"
+  end
 end
 
 class TextDocument < Document
@@ -1516,6 +1729,10 @@ end
 directory = Dir.pwd
 examples = false
 initialize = false
+rfcxml = false
+idnabisxml = false
+html = false
+txt = false
 
 ARGV.each do |whatever|
   a = whatever
@@ -1524,7 +1741,7 @@ ARGV.each do |whatever|
   elsif(a == "-i")
     initialize = true
   elsif(a == "-h")
-    print("Version 0.0.1\n")
+    print("Version 0.0.2\n")
     print("The following files are needed\n")
     print("UnicodeData.txt\n")
     print("CaseFolding.txt\n")
@@ -1538,11 +1755,28 @@ ARGV.each do |whatever|
     print("You can find the files at for example http://www.unicode.org/Public/6.1.0/ucd/\n")
     print("...or subdirectory to a path similar to that.\n")
     print("It is ok to give files like named above but in beta version like UnicodeData-6.1.0d8.txt.\n")
-    print("Usage: createtables.rb [-h] [-e] [-i] [directory]\n")
+    print("Usage: createtables.rb [-h] [-e] [-i] [directory] [-rfcxml] [-idnabisxml] [-html] [-txt]\n")
     exit(1)
+  #Select a file type by command line option
+  elsif(a == "-rfcxml") 
+    rfcxml = true
+  elsif(a == "-idnabisxml") 
+    idnabisxml = true
+  elsif(a == "-html")
+    html = true
+  elsif(a == "-txt")
+    txt = true   
   else
     directory = a
   end
+end
+
+if(rfcxml == false && idnabisxml == false && html == false && txt == false)
+  #Output all file types, if user didn't select a file type.
+  rfcxml = true
+  idnabisxml = true
+  html = true
+  txt = true
 end
 
 if(directory[-1,1] != "/")
@@ -1750,18 +1984,28 @@ if(examples)
   print "\n"
 end
 
-print "Generating xmlrfc.txt\n"
-d = XMLRFCDocument.new(directory + "xmlrfc.xml",u,0x00,0x10FFFF,"UCD")
-print directory + "xmlrfc.xml done!\n"
-
-print "Generating codepoints.txt\n"
-d = TextDocument.new(directory + "allcodepoints.txt",u,0x00,0x10FFFF,"ALL")
-print directory + "codepoints.txt done!\n"
-
-print "Generating byscript.html\n"
-d = HTMLDocument.new(directory + "byscript.html",u,0x00,0x10FFFF,"allsc")
-print directory + "byscript.html done!\n"
-
-print "Generating bygc.html\n"
-d = HTMLDocument.new(directory + "bygc.html",u,0x00,0x10FFFF,"allgc")
-print directory + "bygc.html done!\n"
+                  
+if(txt)
+  print "Generating allcodepoints.txt\n"
+  d = TextDocument.new(directory + "allcodepoints.txt",u,0x00,0x10FFFF,"ALL")
+  print directory + "allcodepoints.txt done!\n"
+end
+if(html)
+  print "Generating byscript.html\n"
+  d = HTMLDocument.new(directory + "byscript.html",u,0x00,0x10FFFF,"allsc")
+  print directory + "byscript.html done!\n"
+                  
+  print "Generating bygc.html\n"
+  d = HTMLDocument.new(directory + "bygc.html",u,0x00,0x10FFFF,"allgc")
+  print directory + "bygc.html done!\n"
+end
+if(rfcxml) 
+  print "Generating xmlrfc.xml\n"
+  d = XMLRFCDocument.new(directory + "xmlrfc.xml",u,0x00,0x10FFFF,"UCD")
+  print directory + "xmlrfc.xml done!\n"
+end
+if(idnabisxml)
+  print "Generating idnabis-tables.xml\n"
+  d = XMLRFCDocument.new(directory + "idnabis-tables.xml",u,0x00,0x10FFFF,"BIS")
+  print directory + "idnabis-tables.xml done!\n"
+end
