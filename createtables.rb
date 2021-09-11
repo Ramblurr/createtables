@@ -1863,7 +1863,7 @@ ARGV.each do |whatever|
   end
 end
 
-if(subdirectory == "")
+if(fetch == false and subdirectory == "")
   print("You must give a subdirectory (version of Unicode) as argument\n")
   exit 1
 end
