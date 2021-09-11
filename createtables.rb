@@ -1,6 +1,6 @@
 #!/usr/bin/ruby
 
-# createtables.rb -- Version 0.0.2
+# createtables.rb -- Version 0.0.3
 #
 # This code generates tables for IDNA2008.
 #
@@ -753,7 +753,7 @@ class Unicodedata
       @normalizations = h[5]
       @compositionexclusions = h[6]
     end
-    print("Cache loaded/n")
+    print("Cache loaded\n")
     return true
   end
 
@@ -1179,7 +1179,7 @@ class Document
         end
         f.print endSection
       end
-       if(kind == "allsc")
+      if(kind == "allsc")
         f.print startDocument
         cp = @myUnicode.codepoint(0x0000)
         f.print startSection
@@ -1271,6 +1271,47 @@ class Document
         f.print endSection
         f.print endDocument
       end
+      if(kind == "CSV")
+        f.print startSection
+        f.print startHeader + "Codepoint,Property,Description\r" + endHeader
+        f.print startPre
+        intervalStart = nil
+        intervalEnd = nil
+        prevValue = ""
+        (@myStart..@myEnd).each do |c|
+          cp = @myUnicode.codepoint(c)
+          if(intervalStart == nil)
+            intervalStart = cp
+            intervalEnd = cp
+            prevValue = cp.uLabel_to_s(@myUnicode)
+          end
+          if(cp.uLabel_to_s(@myUnicode) != prevValue || c == @myEnd)
+            if(intervalStart == intervalEnd)
+              ss = intervalStart.to_s.sub("U+","")
+              tt = intervalStart.name
+            else
+              if(c == @myEnd) #For output last codepoint
+                  intervalEnd = cp
+              end
+              ss = intervalStart.to_s.sub("U+","") + "-" + intervalEnd.to_s.sub("U+","")
+              tt = intervalStart.name + ".." + intervalEnd.name
+            end
+            ss += "," + prevValue
+            ss += "," + tt
+            f.print qTris(ss)
+	    f.print "\r"
+            f.print lineBreak
+            intervalStart = cp
+            intervalEnd = cp
+            prevValue = cp.uLabel_to_s(@myUnicode)
+          else
+            intervalEnd = cp
+          end
+        end
+        f.print endPre
+        f.print endSection
+        f.print endDocument
+      end
       if(kind == "BIS")
       #For make an idnabis-tables.xml
         f.print idnaHeader
@@ -1344,6 +1385,21 @@ class Document
   def qBis(s)
     t = s
     t.gsub!("&lt;control&gt;","NULL") #Change "<control>" to "NULL" for idnabis-table.xml
+    return(t)
+  end
+  def qTris(s)
+    t = s
+    t.upcase!
+    t.gsub!("<CONTROL>","NULL") #Change "<control>" to "NULL" for IANA csv file
+    t.gsub!("EXTENSION A>..","EXTENSION A, FIRST>..")
+    t.gsub!(/EXTENSION A>$/,"EXTENSION A, LAST>")
+    t.gsub!("IDEOGRAPH>..","IDEOGRAPH, FIRST>..")
+    t.gsub!(/IDEOGRAPH>$/,"IDEOGRAPH, LAST>")
+    t.gsub!("SYLLABLE>..","SYLLABLE, FIRST>..")
+    t.gsub!(/SYLLABLE>$/,"SYLLABLE, LAST>")
+    t.gsub!("SURROGATE>..","SURROGATE, FIRST>..")
+    t.gsub!(/SURROGATE>$/,"SURROGATE, LAST>")
+    t.gsub!("NONCHARACTER","NOT A CHARACTER")
     return(t)
   end
   def startSection
@@ -1731,8 +1787,10 @@ examples = false
 initialize = false
 rfcxml = false
 idnabisxml = false
+ianacsv = false
 html = false
 txt = false
+fetch = false
 
 ARGV.each do |whatever|
   a = whatever
@@ -1741,7 +1799,7 @@ ARGV.each do |whatever|
   elsif(a == "-i")
     initialize = true
   elsif(a == "-h")
-    print("Version 0.0.2\n")
+    print("Version 0.0.3\n")
     print("The following files are needed\n")
     print("UnicodeData.txt\n")
     print("CaseFolding.txt\n")
@@ -1755,7 +1813,7 @@ ARGV.each do |whatever|
     print("You can find the files at for example http://www.unicode.org/Public/6.1.0/ucd/\n")
     print("...or subdirectory to a path similar to that.\n")
     print("It is ok to give files like named above but in beta version like UnicodeData-6.1.0d8.txt.\n")
-    print("Usage: createtables.rb [-h] [-e] [-i] [directory] [-rfcxml] [-idnabisxml] [-html] [-txt]\n")
+    print("Usage: createtables.rb [-h] [-e] [-i] [directory] [-rfcxml] [-idnabisxml] [-html] [-txt] [-ianacsv] [-fetch]\n")
     exit(1)
   #Select a file type by command line option
   elsif(a == "-rfcxml") 
@@ -1766,26 +1824,99 @@ ARGV.each do |whatever|
     html = true
   elsif(a == "-txt")
     txt = true   
+  elsif(a == "-ianacsv")
+    ianacsv = true   
+  elsif(a == "-fetch")
+    fetch = true
   else
     directory = a
   end
 end
 
-if(rfcxml == false && idnabisxml == false && html == false && txt == false)
+if(rfcxml == false && idnabisxml == false && html == false && txt == false && ianacsv == false)
   #Output all file types, if user didn't select a file type.
   rfcxml = true
   idnabisxml = true
   html = true
   txt = true
+  ianacsv = true
 end
 
 if(directory[-1,1] != "/")
   directory = directory + "/"
 end
 
+if(fetch)
+  print "Checking Unicode versions\n"
+  if directory =~ /^(.*\/)([0-9]\.[0-9]\.[0-9])\/$/
+    d = $1
+  else
+    d = directory
+  end
+  print "Looking in directory " + d + "\n"
+  require 'net/http'
+  print "Checking what versions of Unicode exists now\n"
+  a = Net::HTTP.get('www.unicode.org', '/Public/')
+  a.each_line do |line|
+    if line =~ /a href="([0-9]*[5-9]\.[0-9]\.[0-9])\/\"/
+      version = $1
+      print "Checking version " + version + "\n"
+      unless(File.directory?(d + version))
+        print "Creating directory " + d + version + "\n"
+	Dir.mkdir(d + version)	
+      end
+      print "Inspecting directory " + d + version + "\n"
+      directories = [ "/ucd/", "/ucd/extracted/", "/ucd/auxiliary/" ]
+      directories.each { |remoted|
+        b = Net::HTTP.get('www.unicode.org', "/Public/" + version + remoted)
+#	print "Checking http://www.unicode.org/Public/" + version + remoted + "\n"
+        b.each_line do |bline|
+	  filename = false
+          if bline =~ /\"([A-Za-z]+)-(.*)\.txt\"/
+#	    print "Found " + $1 + " of version " + $2 + "\n"
+	    filename = $1
+	    fileversion = "-" + $2
+	  elsif bline =~ /<a href="([A-Za-z]+)\.txt\"/
+#	    print "Found final version of " + $1 + "\n"
+	    filename = $1
+	    fileversion = ""
+          end
+	  if(filename)
+	    if(filename == "UnicodeData" ||
+	       filename == "CaseFolding" ||
+	       filename == "Blocks" ||
+	       filename == "Scripts" ||
+	       filename == "PropList" ||
+	       filename == "DerivedCoreProperties" ||
+	       filename == "CompositionExclusions" ||
+	       filename == "DerivedGeneralCategory" ||
+	       filename == "HangulSyllableType")
+	        if File.exists?(d + version + "/" + filename + fileversion + ".txt")
+#	          print "File " + d + version + "/" + filename + fileversion + ".txt exists\n"
+	        else
+#	          print "File " + d + version + "/" + filename + fileversion + ".txt does not exist\n"
+		  print "Fetching http://www.unicode.org/Public/" + version + remoted + filename + fileversion + ".txt..."
+		  STDOUT.flush
+		  content = Net::HTTP.get('www.unicode.org', "/Public/" + version + remoted + filename + fileversion + ".txt")
+		  file = File.open(d + version + "/" + filename + fileversion + ".txt", "w")
+		  file.write(content) 
+		  file.close unless file == nil
+		  print "...done\n"
+              end
+ 	    end
+          end
+        end
+      }
+    end
+  end
+end
+
 if(initialize)
-  print("Removing cache\n")
-  File::unlink(directory + "unicode.cache")
+  print("Initializing...checking if chache exists\n")
+  if(File::exists?(directory + "unicode.cache"))
+    print("Removing cache\n")
+    File::unlink(directory + "unicode.cache")
+  end
 end
 
 print("Looking in directory " + directory + "\n")
@@ -2008,4 +2139,9 @@ if(idnabisxml)
   print "Generating idnabis-tables.xml\n"
   d = XMLRFCDocument.new(directory + "idnabis-tables.xml",u,0x00,0x10FFFF,"BIS")
   print directory + "idnabis-tables.xml done!\n"
+end
+if(ianacsv)
+  print "Generating iana.csv\n"
+  d = TextDocument.new(directory + "iana.csv",u,0x00,0x10FFFF,"CSV")
+  print directory + "iana.csv done!\n"
 end
