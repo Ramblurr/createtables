@@ -1,45 +1,42 @@
 #!/usr/bin/env ruby
+# coding: utf-8
 
-# createtables.rb -- Version 0.0.6
+# createtables.rb -- Version 0.0.8
 #
 # This code generates tables for IDNA2008.
 #
 # It requires a number of files from the Unicode distribution, and
 # configuration of some paths in this, the code itself.
 #
-# Written by Patrik Faltstrom <paf@cisco.com>
-#
-# Copyright (c) 2010, Cisco Systems, Inc
+# BSD 3-Clause License
+# 
+# Copyright (c) 2021, Patrik Fältström
 # All rights reserved.
-#
-# Modified by Takahiro Nemoto<t.nemo10@kmd.keio.ac.jp>
-#
-# Copyright (c) 2012, Japan Registry Services Co., Ltd.
-# All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without modification, are permitted
-# provided that the following conditions are met:
-#
-# Redistributions of source code must retain the above copyright notice, this list of conditions
-# and the following disclaimer.
-#
-# Redistributions in binary form must reproduce the above copyright notice, this list of conditions
-# and the following disclaimer in the documentation and/or other materials provided with the distribution.
-#
-# Neither the name of the <ORGANIZATION> nor the names of its contributors may be used to endorse or
-# promote products derived from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
-# WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
-# PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
-# ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-# IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
-#
-
+# 
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+# 
+# 1. Redistributions of source code must retain the above copyright notice, this
+#    list of conditions and the following disclaimer.
+# 
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+#    this list of conditions and the following disclaimer in the documentation
+#    and/or other materials provided with the distribution.
+# 
+# 3. Neither the name of the copyright holder nor the names of its
+#    contributors may be used to endorse or promote products derived from
+#    this software without specific prior written permission.
+# 
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 require 'rubygems'
 require 'idn'
@@ -1827,7 +1824,7 @@ ARGV.each do |whatever|
   elsif(a == "-i")
     initialize = true
   elsif(a == "-h")
-    print("Version 0.0.3\n")
+    print("Version 0.0.7\n")
     print("The following files are needed\n")
     print("UnicodeData.txt\n")
     print("CaseFolding.txt\n")
@@ -1841,7 +1838,10 @@ ARGV.each do |whatever|
     print("You can find the files at for example http://www.unicode.org/Public/6.1.0/ucd/\n")
     print("...or subdirectory to a path similar to that.\n")
     print("It is ok to give files like named above but in beta version like UnicodeData-6.1.0d8.txt.\n")
-    print("Usage: createtables.rb [-h] [-e] [-i] [directory] [-rfcxml] [-idnabisxml] [-html] [-txt] [-ianacsv] [-fetch] [-idna2003]\n")
+    print("\nYou can also fetch Unicode tables by using the argument -fetch\n")
+    print("\nReset the cache by using the argument -i\n")
+    print("\nLook at some examples by using the argument -e\n")
+    print("\nUsage: createtables.rb [-h] [-e] [-i] [directory] [-rfcxml] [-idnabisxml] [-html] [-txt] [-ianacsv] [-fetch] [-idna2003]\n")
     exit(1)
   #Select a file type by command line option
   elsif(a == "-rfcxml") 
@@ -1861,6 +1861,11 @@ ARGV.each do |whatever|
   else
     subdirectory = a
   end
+end
+
+if(subdirectory == "")
+  print("You must give a subdirectory (version of Unicode) as argument\n")
+  exit 1
 end
 
 if(rfcxml == false && idnabisxml == false && html == false && txt == false && ianacsv == false)
@@ -2151,8 +2156,9 @@ if(examples)
     print u.codepoint(thec).to_s + " "
   end
   print "\n"
-end
 
+  exit 0
+end
                   
 if(txt)
   print "Generating allcodepoints.txt\n"
