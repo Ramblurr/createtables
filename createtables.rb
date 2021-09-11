@@ -1391,8 +1391,8 @@ class Document
     t = s
     t.upcase!
     t.gsub!("<CONTROL>","NULL") #Change "<control>" to "NULL" for IANA csv file
-    t.gsub!("EXTENSION A>..","EXTENSION A, FIRST>..")
-    t.gsub!(/EXTENSION A>$/,"EXTENSION A, LAST>")
+    t.gsub!(/EXTENSION ([A-Z])>../,'EXTENSION \1, FIRST>..')
+    t.gsub!(/EXTENSION ([A-Z])>$/,'EXTENSION \1, LAST>')
     t.gsub!("IDEOGRAPH>..","IDEOGRAPH, FIRST>..")
     t.gsub!(/IDEOGRAPH>$/,"IDEOGRAPH, LAST>")
     t.gsub!("SYLLABLE>..","SYLLABLE, FIRST>..")
@@ -1400,6 +1400,7 @@ class Document
     t.gsub!("SURROGATE>..","SURROGATE, FIRST>..")
     t.gsub!(/SURROGATE>$/,"SURROGATE, LAST>")
     t.gsub!("NONCHARACTER","NOT A CHARACTER")
+    t.gsub!(/^([^,]*,[^,]*),(.*,.*)$/,'\1,"\2"')
     return(t)
   end
   def startSection
