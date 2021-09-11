@@ -1,4 +1,4 @@
-#!/usr/bin/ruby
+#!/usr/bin/env ruby
 
 # createtables.rb -- Version 0.0.6
 #
@@ -49,7 +49,7 @@ def stringToArray(s)
     return(s)
   end
   a = Array.new
-  if(s.class == Fixnum)
+  if(s.class == Integer)
     a.push(s)
     return(a)
   end
@@ -744,10 +744,10 @@ class Unicodedata
     @savedStart = 0 
 
     unless(loadFromCache)
-      print("Creating cache file\n")
+      print("Creating cache file " + @ucache + "\n")
       parse
       dumpToCache
-      print("Cache filel created\n")
+      print("Cache file created\n")
     end
 
   end
@@ -1021,7 +1021,7 @@ SCount = LCount * NCount
   def nfkd(s)
     t = Array.new
     s.each do |c|
-      if(c.class != Fixnum)
+      if(c.class != Integer)
         c = c.to_i
       end
       if (c >= 0xAC00 and c <= 0xD7AF)
