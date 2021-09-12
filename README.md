@@ -1,6 +1,10 @@
 # createtables
 ## Creation of derived property values for IDNA
 
+According to the standard for internationalized domain names, only a subset of characetsr in the Unicode Character Set is allowed to be used. If a character is allowed or not is defined by a derived property value which is calculated based on meta data that Unicode Consortium has set for each code point. The algorithm by which this derived property value is calulated is definied in [RFC5892](https://www.ietf.org/rfc/rfc5892.html).
+
+This software is calculating this derived property value for each version of Unicode, i.e. implements the algorithm in RFC5892.
+
 `createtables.rb` both fetches data from Unicode Consortium and calculates derived property values.
 
 ## Fetch by doing:
