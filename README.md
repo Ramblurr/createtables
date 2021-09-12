@@ -5,6 +5,14 @@ According to the standard for internationalized domain names, only a subset of c
 
 This software is calculating this derived property value for each version of Unicode, i.e. implements the algorithm in RFC5892.
 
+Codepoints can have three derived property values:
+
+- PVALID: The code point can be used in IDN
+- DISALLOWED: The code point can not be used in IDN
+- UNASSIGNED: The code point is not assigned by Unicode Consortium and can not be used in IDN
+- CONTEXTJ: The code point must be checked according to contextual rules for join controls
+- CONTEXTO: The code point must be checked according to contextual rules for other code points than join controls
+
 `createtables.rb` both fetches data from Unicode Consortium and calculates derived property values.
 
 ## Fetch by doing:
