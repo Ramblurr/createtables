@@ -1925,7 +1925,7 @@ if(fetch)
 	       filename == "CompositionExclusions" ||
 	       filename == "DerivedGeneralCategory" ||
 	       filename == "HangulSyllableType")
-	        if File.exists?(d + version + "/" + filename + fileversion + ".txt")
+	        if File.exist?(d + version + "/" + filename + fileversion + ".txt")
 #	          print "File " + d + version + "/" + filename + fileversion + ".txt exists\n"
 	        else
 #	          print "File " + d + version + "/" + filename + fileversion + ".txt does not exist\n"
